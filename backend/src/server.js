@@ -19,7 +19,7 @@ export function createServer() {
   // Allowed frontend origins
   const allowedOrigins = new Set([
     "https://psy1.vercel.app",
-    "http://localhost:5173",
+    "https://chatapp-git-main-yashu-6bf0.vercel.app/",
     "http://127.0.0.1:5173",
     ...(config.clientOrigin
       ? [config.clientOrigin.replace(/\/$/, "")]

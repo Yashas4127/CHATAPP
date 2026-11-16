@@ -20,7 +20,7 @@ const usernameSchema = z
   .regex(/^[a-z0-9_]{3,20}$/, "Username must be 3-20 characters: letters, numbers or underscore.");
 const passwordSchema = z
   .string()
-  .min(8, "Password must be at least 8 characters.")
+  .min(4, "Password must be at least 8 characters.")
   .max(128, "Password is too long.");
 const messageSchema = z.object({
   text: z.string().trim().min(1, "Message is empty.").max(4000, "Message is too long (max 4000 characters).")
