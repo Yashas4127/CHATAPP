@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
   const backendPort = process.env.PORT || backendEnv.PORT || 5000;
   const backend = process.env.VITE_BACKEND_URL
     || env.VITE_BACKEND_URL
-    || `http://127.0.0.1:${backendPort}`;
+    || `https://chatapp-splc.onrender.com${backendPort}`;
 
   return {
     plugins: [react()],
