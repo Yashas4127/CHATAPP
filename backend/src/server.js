@@ -20,7 +20,7 @@ export function createServer() {
   const allowedOrigins = new Set([
     "https://psy1.vercel.app",
     "https://chatapp-git-main-yashu-6bf0.vercel.app/",
-    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
     ...(config.clientOrigin
       ? [config.clientOrigin.replace(/\/$/, "")]
       : [])
