@@ -25,10 +25,8 @@ async function connectDatabase() {
     console.log("MongoDB connected.");
   } catch (error) {
     console.error("\nCould not connect to MongoDB:", error.message);
-    console.error("  - Check MONGODB_URI in backend/.env");
-    console.error("  - Atlas: allow your IP under Network Access, and URL-encode special characters in the password");
-    console.error("  - 'querySrv ECONNREFUSED': add DNS_SERVERS=8.8.8.8,8.8.4.4 to backend/.env\n");
-    process.exit(1);
+    console.error("  - Continuing without a DB – some features may be unavailable.");
+    // Do not exit; allow the server to start for front‑end testing.
   }
 }
 
@@ -74,7 +72,10 @@ server.on("error", (error) => {
   else console.error(error);
   process.exit(1);
 });
-server.listen(config.port, () => console.log(`WebChat API listening on http://localhost:${config.port}`));
+server.listen(config.port,"0.0.0.0", () => console.log(`WebChat API listening on http://localhost:${config.port}`));
+// server.listen(3000, "0.0.0.0", () => {
+//     console.log("Server running on port 3000");
+// });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {

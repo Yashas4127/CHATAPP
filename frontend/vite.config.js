@@ -33,12 +33,19 @@ export default defineConfig(({ mode }) => {
     },
 
     server: {
+      host: "0.0.0.0", // Important
       port: 5173,
       strictPort: true,
 
       proxy: {
         "/api": {
           target: backend,
+          changeOrigin: true,
+          secure: true
+        },
+        "/socket.io": {
+          target: backend,
+          ws: true,
           changeOrigin: true,
           secure: true
         }

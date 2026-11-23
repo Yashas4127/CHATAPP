@@ -4,7 +4,11 @@ import {
   applyAwarenessUpdate, Awareness, encodeAwarenessUpdate
 } from "y-protocols/awareness";
 
+// Backend URL for socket.io (from Vite env)
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 const SOCKET_ORIGIN = Symbol("socket");
+
 
 function toBase64(bytes) {
   let binary = "";
