@@ -1,4 +1,4 @@
-
+import dns from "node:dns";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
@@ -15,7 +15,7 @@ import { setupSockets } from "./sockets.js";
 
 export function createServer() {
   const app = express();
-
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
   // Allowed frontend origins
   const allowedOrigins = new Set([
     "https://psy1.vercel.app",
