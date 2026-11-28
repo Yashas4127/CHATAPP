@@ -58,6 +58,10 @@ async function seedAdmin() {
     console.log(`Admin account "${username}" created.`);
   } else if (existing.role !== "admin") {
     console.warn(`A normal user named "${username}" already exists, so no admin was created. Use a different ADMIN_USERNAME.`);
+  } else if (!(await bcrypt.compare(password, existing.passwordHash))) {
+    existing.passwordHash = await bcrypt.hash(password, 12);
+    await existing.save();
+    console.log("Administrator password synchronized from environment configuration.");
   }
 }
 

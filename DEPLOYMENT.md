@@ -28,6 +28,8 @@ Set these secret environment variables in Render without committing them:
 - `MESSAGE_ENCRYPTION_KEY`: preserve the existing 64-character hexadecimal key.
 - `ADMIN_USERNAME` and `ADMIN_PASSWORD`: set an administrator account; production requires a valid username and a password of at least 12 characters.
 
+For an existing administrator, keep `ADMIN_USERNAME` unchanged and set the new strong password in Render; startup updates that account's password hash to match. Choosing a different username creates another administrator and does not disable the existing account.
+
 The Blueprint sets `NODE_ENV=production`, `COOKIE_SECURE=true`, and `TRUST_PROXY=true`. Render supplies `PORT`. `CLIENT_ORIGIN` is intentionally omitted: frontend, API, and Socket.IO share the same origin. `JUDGE0_API_URL` defaults to the public Judge0 CE endpoint; `JUDGE0_API_KEY` and `JUDGE0_API_HOST` are optional for a keyed Judge0 provider. Do not set `VITE_BACKEND_URL` in production.
 
 ## Smoke checks
