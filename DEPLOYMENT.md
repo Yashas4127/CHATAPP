@@ -16,7 +16,7 @@ Render runs one Node.js 22 Web Service from the repository root. Express serves 
 Create a Blueprint deployment from the repository's `render.yaml` or create a Web Service with the same settings:
 
 - Root directory: repository root
-- Build: `npm ci && npm ci --prefix backend && npm ci --prefix frontend && npm run build`
+- Build: `npm ci --include=dev && npm ci --prefix backend --include=dev && npm ci --prefix frontend --include=dev && npm run build`
 - Start: `npm start`
 - Health check: `/api/health`
 - Runtime: Node.js 22
