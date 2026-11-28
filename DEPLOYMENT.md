@@ -16,7 +16,7 @@ Render runs one Node.js 22 Web Service from the repository root. Express serves 
 Create a Blueprint deployment from the repository's `render.yaml` or create a Web Service with the same settings:
 
 - Root directory: repository root
-- Build: `npm ci --include=dev && npm ci --prefix backend --include=dev && npm ci --prefix frontend --include=dev && npm run build`
+- Build: `npm ci --include=dev && npm ci --prefix backend --include=dev && npm ci --prefix frontend --include=dev && NODE_OPTIONS=--max-old-space-size=4096 npm run build`
 - Start: `npm start`
 - Health check: `/api/health`
 - Runtime: Node.js 22
@@ -31,6 +31,8 @@ Set these secret environment variables in Render without committing them:
 For an existing administrator, keep `ADMIN_USERNAME` unchanged and set the new strong password in Render; startup updates that account's password hash to match. Choosing a different username creates another administrator and does not disable the existing account.
 
 The Blueprint sets `NODE_ENV=production`, `COOKIE_SECURE=true`, and `TRUST_PROXY=true`. Render supplies `PORT`. `CLIENT_ORIGIN` is intentionally omitted: frontend, API, and Socket.IO share the same origin. `JUDGE0_API_URL` defaults to the public Judge0 CE endpoint; `JUDGE0_API_KEY` and `JUDGE0_API_HOST` are optional for a keyed Judge0 provider. Do not set `VITE_BACKEND_URL` in production.
+
+The production build command raises Node's heap ceiling to 4 GiB. Vite source maps are explicitly disabled, and Monaco's bundle retains the languages offered by the app while excluding unused built-in language registrations. The Render free plan is unchanged.
 
 ## Smoke checks
 

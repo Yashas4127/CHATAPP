@@ -30,6 +30,24 @@ export default defineConfig(({ mode }) => {
       include: ["monaco-editor"]
     },
 
+    build: {
+      sourcemap: false,
+      rollupOptions: {
+        treeshake: {
+          moduleSideEffects(id, external) {
+            if (external) return true;
+            const normalizedId = id.replaceAll("\\", "/");
+            const languageRegistration = normalizedId.match(
+              /\/monaco-editor\/esm\/vs\/languages\/definitions\/([^/]+)\/register\.js$/
+            );
+            if (!languageRegistration) return true;
+            return ["cpp", "go", "java", "javascript", "python", "typescript"]
+              .includes(languageRegistration[1]);
+          }
+        }
+      }
+    },
+
     server: {
       host: "0.0.0.0", // Important
       port: 5713,
