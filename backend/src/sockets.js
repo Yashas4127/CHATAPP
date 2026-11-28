@@ -10,6 +10,8 @@ import { normalizeGroupCode } from "./group-routes.js";
 const isId = (value) => typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
 const isClipboardCode = (value) => typeof value === "string" && /^CLP-(?:[A-Z0-9]|[A-Z0-9][A-Z0-9-]{0,22}[A-Z0-9])$/i.test(value);
 const MAX_COLLAB_UPDATE_BYTES = 512 * 1024;
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const ALLOWED_FILE_TYPES = new Set(["image/gif", "image/jpeg", "image/png", "application/pdf", "text/plain"]);
 const SOCKET_ORIGIN = Symbol("socket");
 const ownerCookieName = (code) => `wc_clip_owner_${code}`;
 const toBase64 = (bytes) => Buffer.from(bytes).toString("base64");
@@ -354,7 +356,7 @@ export function setupSockets(io) {
         }
 
         const cookies = cookie.parse(socket.handshake.headers.cookie || "");
-        const ownerToken = cookies[ownerCookieName(code)] || payload.token;
+        const ownerToken = cookies[ownerCookieName(code)];
         const isCreator = matchesGuestToken(ownerToken, clipboard.creatorTokenHash);
 
         const displayName = typeof payload.displayName === "string" && payload.displayName.trim()
@@ -400,7 +402,7 @@ export function setupSockets(io) {
     // clipboard:update
     socket.on("clipboard:update", async (payload = {}) => {
       const collab = socket.data.collab;
-      if (!collab || collab.kind !== "clipboard") return;
+      if (!collab || collab.kind !== "clipboard" || (!collab.canEdit && !collab.isCreator)) return;
       io.to(collab.room).emit("clipboard:update", payload);
     });
 
@@ -419,13 +421,14 @@ export function setupSockets(io) {
         }
 
         const cookies = cookie.parse(socket.handshake.headers.cookie || "");
-        const token = cookies[GROUP_SESSION_COOKIE(code)] || payload.token;
+        const token = cookies[GROUP_SESSION_COOKIE(code)];
         const member = groupMemberForToken(group, token);
+        if (!member) {
+          return socket.emit("collab:error", { message: "Join the group with a valid invitation to collaborate." });
+        }
         const isCreator = matchesGuestToken(token, group.creatorTokenHash);
 
-        const displayName = member?.displayName || (typeof payload.displayName === "string" && payload.displayName.trim()
-          ? payload.displayName.trim().slice(0, 32)
-          : socket.data.user?.username || "Guest");
+        const displayName = member.displayName;
 
         const color = /^#[0-9A-F]{6}$/i.test(payload.color || "")
           ? payload.color
@@ -504,7 +507,7 @@ export function setupSockets(io) {
         const update = fromBase64(payload.update);
         const entry = await socket.data.collabReady;
 
-        if (collab.kind === "clipboard" && !collab.canEdit && !collab.isCreator) {
+        if (collab.kind === "clipboard" && !collab.isCreator) {
           const current = await Clipboard.findOne(activeClipboardFilter(collab.code)).select("permission").lean();
           if (current?.permission !== "editable") {
             throw new Error("This clipboard is read-only.");
@@ -567,11 +570,43 @@ export function setupSockets(io) {
     // message:send
     socket.on("message:send", async (payload = {}) => {
       const collab = socket.data.collab;
-      const roomType = payload.roomType || collab?.kind;
-      const roomCode = payload.roomCode || collab?.code;
-      const senderName = payload.senderName || collab?.displayName || socket.data.user?.username || "Guest";
+      if (
+        !collab ||
+        !socket.rooms.has(collab.room) ||
+        (payload.roomType && payload.roomType !== collab.kind) ||
+        (payload.roomCode && payload.roomCode !== collab.code)
+      ) {
+        return socket.emit("chat:error", { message: "Join this room before sending a message." });
+      }
+      const { kind: roomType, code: roomCode } = collab;
+      const senderName = collab.displayName || socket.data.user?.username || "Guest";
       const text = typeof payload.text === "string" ? payload.text.trim() : "";
-      if (!roomType || !roomCode || (!text && !payload.attachment)) return;
+      if (text.length > 2000) {
+        return socket.emit("chat:error", { message: "Message is too long." });
+      }
+      let attachment;
+      if (payload.attachment) {
+        const input = payload.attachment;
+        if (
+          typeof input.name !== "string" || !input.name.trim() || input.name.length > 128 ||
+          !ALLOWED_FILE_TYPES.has(input.mimeType) ||
+          !Number.isInteger(input.size) || input.size < 1 || input.size > MAX_FILE_BYTES ||
+          typeof input.data !== "string"
+        ) {
+          return socket.emit("chat:error", { message: "The attachment is invalid or too large." });
+        }
+        const bytes = Buffer.from(input.data, "base64");
+        if (bytes.length !== input.size || bytes.length > MAX_FILE_BYTES) {
+          return socket.emit("chat:error", { message: "The attachment size is invalid or too large." });
+        }
+        attachment = {
+          name: input.name.trim().replace(/[\\/]/g, "_"),
+          mimeType: input.mimeType,
+          size: input.size,
+          data: input.data
+        };
+      }
+      if (!text && !attachment) return;
 
       try {
         const roomName = documentKey(roomType, roomCode);
@@ -581,7 +616,7 @@ export function setupSockets(io) {
           senderName: senderName.slice(0, 32),
           senderSession: socket.id,
           text,
-          attachment: payload.attachment || undefined
+          attachment
         });
 
         const shaped = {
@@ -606,22 +641,20 @@ export function setupSockets(io) {
     });
 
     // typing:start and typing:stop
-    socket.on("typing:start", (payload = {}) => {
+    socket.on("typing:start", () => {
       const collab = socket.data.collab;
-      const room = collab?.room || (payload.roomType && payload.roomCode ? documentKey(payload.roomType, payload.roomCode) : null);
-      if (!room) return;
-      const username = payload.username || collab?.displayName || "Guest";
-      socket.to(room).emit("typing:start", { socketId: socket.id, username, isTyping: true });
-      socket.to(room).emit("room:typing", { socketId: socket.id, name: username, isTyping: true });
+      if (!collab || !socket.rooms.has(collab.room)) return;
+      const username = collab.displayName || "Guest";
+      socket.to(collab.room).emit("typing:start", { socketId: socket.id, username, isTyping: true });
+      socket.to(collab.room).emit("room:typing", { socketId: socket.id, name: username, isTyping: true });
     });
 
-    socket.on("typing:stop", (payload = {}) => {
+    socket.on("typing:stop", () => {
       const collab = socket.data.collab;
-      const room = collab?.room || (payload.roomType && payload.roomCode ? documentKey(payload.roomType, payload.roomCode) : null);
-      if (!room) return;
-      const username = payload.username || collab?.displayName || "Guest";
-      socket.to(room).emit("typing:stop", { socketId: socket.id, username, isTyping: false });
-      socket.to(room).emit("room:typing", { socketId: socket.id, name: username, isTyping: false });
+      if (!collab || !socket.rooms.has(collab.room)) return;
+      const username = collab.displayName || "Guest";
+      socket.to(collab.room).emit("typing:stop", { socketId: socket.id, username, isTyping: false });
+      socket.to(collab.room).emit("room:typing", { socketId: socket.id, name: username, isTyping: false });
     });
 
     // Legacy room:typing

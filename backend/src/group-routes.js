@@ -259,6 +259,10 @@ export function buildGroupRouter({ io }) {
     await result.group.save();
 
     const room = `group:${result.group.code}`;
+    const sockets = await io.in(room).fetchSockets();
+    for (const socket of sockets) {
+      if (socket.data.collab?.memberTokenHash === target.tokenHash) socket.disconnect(true);
+    }
     io.to(room).emit("group:member-left", {
       userId,
       displayName: target.displayName,
@@ -495,7 +499,7 @@ export function buildGroupRouter({ io }) {
         executedBy: result.member.displayName,
         error: err.message
       });
-      return res.status(400).json({ error: err.message });
+      return res.status(err.code === "JUDGE0_UNAVAILABLE" ? 503 : 400).json({ error: err.message });
     }
 
     const execution = await CodeExecution.create({

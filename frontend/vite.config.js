@@ -9,8 +9,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, root, "VITE_");
 
-  const backend =
-    env.VITE_BACKEND_URL;
+  const backend = env.VITE_BACKEND_URL || "http://localhost:5000";
 
   return {
     plugins: [react()],
@@ -29,6 +28,24 @@ export default defineConfig(({ mode }) => {
 
     optimizeDeps: {
       include: ["monaco-editor"]
+    },
+
+    build: {
+      sourcemap: false,
+      rollupOptions: {
+        treeshake: {
+          moduleSideEffects(id, external) {
+            if (external) return true;
+            const normalizedId = id.replaceAll("\\", "/");
+            const languageRegistration = normalizedId.match(
+              /\/monaco-editor\/esm\/vs\/languages\/definitions\/([^/]+)\/register\.js$/
+            );
+            if (!languageRegistration) return true;
+            return ["cpp", "go", "java", "javascript", "python", "typescript"]
+              .includes(languageRegistration[1]);
+          }
+        }
+      }
     },
 
     server: {

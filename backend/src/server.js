@@ -1,4 +1,3 @@
-import dns from "node:dns";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
@@ -15,14 +14,10 @@ import { setupSockets } from "./sockets.js";
 
 export function createServer() {
   const app = express();
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
-  // Allowed frontend origins
   const allowedOrigins = new Set([
-    "https://psy1.vercel.app",
-    "https://chatapp-git-main-yashu-6bf0.vercel.app/",
-    "http://127.0.0.1:5174",
-    ...(config.clientOrigin
-      ? [config.clientOrigin.replace(/\/$/, "")]
+    ...(config.clientOrigin ? [config.clientOrigin] : []),
+    ...(config.nodeEnv === "development"
+      ? ["http://localhost:5713", "http://127.0.0.1:5713"]
       : [])
   ]);
 
@@ -30,14 +25,12 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
   const corsOptions = {
     origin: (origin, callback) => {
       if (
-        !origin ||
-        allowedOrigins.has(origin.replace(/\/$/, "")) ||
-        config.nodeEnv === "development"
+        !origin || allowedOrigins.has(origin.replace(/\/$/, ""))
       ) {
         return callback(null, true);
       }
 
-      return callback(new Error("CORS not allowed"), false);
+      return callback(null, false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -65,12 +58,8 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
       contentSecurityPolicy: {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          "connect-src": [
-            "'self'",
-            "ws:",
-            "wss:",
-            "https://chatapp-splc.onrender.com"
-          ],
+          "connect-src": ["'self'", "ws:", "wss:"],
+          "worker-src": ["'self'", "blob:"],
           "upgrade-insecure-requests": null
         }
       }

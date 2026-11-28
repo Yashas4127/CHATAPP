@@ -19,14 +19,13 @@ async function connectDatabase() {
       serverSelectionTimeoutMS: 20_000,
       socketTimeoutMS: 45_000,
       connectTimeoutMS: 20_000,
-      maxPoolSize: 10,
-      family: 4
+      maxPoolSize: 10
     });
     console.log("MongoDB connected.");
   } catch (error) {
-    console.error("\nCould not connect to MongoDB:", error.message);
-    console.error("  - Continuing without a DB – some features may be unavailable.");
-    // Do not exit; allow the server to start for front‑end testing.
+    console.error("[startup] MongoDB connection failed; verify Atlas network access and MONGODB_URI.");
+    console.error(`[startup] Failure type: ${error.name || "unknown"}`);
+    process.exit(1);
   }
 }
 
@@ -59,6 +58,10 @@ async function seedAdmin() {
     console.log(`Admin account "${username}" created.`);
   } else if (existing.role !== "admin") {
     console.warn(`A normal user named "${username}" already exists, so no admin was created. Use a different ADMIN_USERNAME.`);
+  } else if (!(await bcrypt.compare(password, existing.passwordHash))) {
+    existing.passwordHash = await bcrypt.hash(password, 12);
+    await existing.save();
+    console.log("Administrator password synchronized from environment configuration.");
   }
 }
 
@@ -68,14 +71,11 @@ await seedAdmin();
 
 const { server } = createServer();
 server.on("error", (error) => {
-  if (error.code === "EADDRINUSE") console.error(`Port ${config.port} is already in use. Change PORT in backend/.env or stop the other process.`);
+  if (error.code === "EADDRINUSE") console.error(`Port ${config.port} is already in use.`);
   else console.error(error);
   process.exit(1);
 });
-server.listen(config.port,"0.0.0.0", () => console.log(`WebChat API listening on http://localhost:${config.port}`));
-// server.listen(3000, "0.0.0.0", () => {
-//     console.log("Server running on port 3000");
-// });
+server.listen(config.port, "0.0.0.0", () => console.log(`WebChat listening on port ${config.port}.`));
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
