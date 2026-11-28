@@ -10,8 +10,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, root, "VITE_");
 
   const backend =
-    env.VITE_BACKEND_URL ||
-    "https://chatapp-splc.onrender.com";
+    env.VITE_BACKEND_URL;
 
   return {
     plugins: [react()],
@@ -34,7 +33,7 @@ export default defineConfig(({ mode }) => {
 
     server: {
       host: "0.0.0.0", // Important
-      port: 5173,
+      port: 5713,
       strictPort: true,
 
       proxy: {
