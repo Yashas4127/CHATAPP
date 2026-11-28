@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
@@ -20,7 +21,7 @@ const usernameSchema = z
   .regex(/^[a-z0-9_]{3,20}$/, "Username must be 3-20 characters: letters, numbers or underscore.");
 const passwordSchema = z
   .string()
-  .min(4, "Password must be at least 8 characters.")
+  .min(8, "Password must be at least 8 characters.")
   .max(128, "Password is too long.");
 const messageSchema = z.object({
   text: z.string().trim().min(1, "Message is empty.").max(4000, "Message is too long (max 4000 characters).")
@@ -117,7 +118,10 @@ export function buildRouter({ io, vault, presence }) {
   };
 
   // ---------- health ----------
-  router.get("/health", (_req, res) => res.json({ status: "ok" }));
+  router.get("/health", (_req, res) => {
+    const ready = mongoose.connection.readyState === 1;
+    res.status(ready ? 200 : 503).json({ status: ready ? "ok" : "unavailable" });
+  });
 
   // ---------- auth ----------
   router.post("/auth/register", authLimiter, asyncRoute(async (req, res) => {

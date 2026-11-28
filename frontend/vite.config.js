@@ -9,8 +9,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, root, "VITE_");
 
-  const backend =
-    env.VITE_BACKEND_URL;
+  const backend = env.VITE_BACKEND_URL || "http://localhost:5000";
 
   return {
     plugins: [react()],
